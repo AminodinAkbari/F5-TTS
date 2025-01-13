@@ -484,11 +484,10 @@ with gr.Blocks() as app_multistyle:
             ref_text = speech_types[current_style].get("ref_text", "")
             
             # Detect language of the dialogue
+            ema_model = F5TTS_ema_model
             language = detect(text)
             if language == "es":  # Spanish
                 ema_model = F5TTS_spanish_model
-            else:  # Default to English
-                ema_model = F5TTS_ema_model
 
             # Generate speech for this segment using the correct model
             audio_out, _, ref_text_out = infer(
