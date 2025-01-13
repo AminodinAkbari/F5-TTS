@@ -492,8 +492,9 @@ with gr.Blocks() as app_multistyle:
 
             # Generate speech for this segment using the correct model
             audio_out, _, ref_text_out = infer(
-                ref_audio, ref_text, text, model=ema_model, remove_silence=remove_silence, cross_fade_duration=0, show_info=print
+                ref_audio, ref_text, gen_text=text, model=ema_model, remove_silence=remove_silence, cross_fade_duration=0, show_info=print
             )
+
             sr, audio_data = audio_out
 
             generated_audio_segments.append(audio_data)
