@@ -483,6 +483,20 @@ with gr.Blocks() as app_multistyle:
         current_style = "Regular"
 
         for segment in segments:
+            
+            if not ref_audio:
+                gr.Warning(f"Please provide reference audio for type {full_label}.")
+                continue
+
+            full_label = f"{segment['speaker']}_{segment['language']}_{segment['style']}"
+            if full_label in speech_types:
+                ref_audio = speech_types[full_label]["audio"]
+                ref_text = speech_types[full_label].get("ref_text", "")
+            else:
+                gr.Warning(f"Type {full_label} is not available, will use Regular as default.")
+                ref_audio = speech_types["Regular"]["audio"]
+                ref_text = speech_types["Regular"].get("ref_text", "")
+            
             style = segment["style"]
             text = segment["text"]
             language = segment["language"]  # Extracted language
