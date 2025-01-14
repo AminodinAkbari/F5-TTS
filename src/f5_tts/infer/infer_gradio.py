@@ -131,6 +131,8 @@ def infer(
     speed=1,
     show_info=gr.Info,
 ):
+    show_info(f"Using model: {model}")
+
     if not ref_audio_orig:
         gr.Warning("Please provide reference audio.")
         return gr.update(), gr.update(), ref_text
@@ -159,6 +161,9 @@ def infer(
             custom_ema_model = load_custom(model[1], vocab_path=model[2], model_cfg=model[3])
             pre_custom_path = model[1]
         ema_model = custom_ema_model
+    else:
+        show_info("Invalid model type provided. Defaulting to F5-TTS model.")
+        ema_model = F5TTS_ema_model
 
     final_wave, final_sample_rate, combined_spectrogram = infer_process(
         ref_audio,
