@@ -141,7 +141,9 @@ def infer(
 
     ref_audio, ref_text = preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=show_info)
 
-    if model == "F5-TTS":
+    if isinstance(model, DiT) or isinstance(model, UNetT):
+        ema_model = model
+    elif model == "F5-TTS":
         ema_model = F5TTS_ema_model
     elif model == "E2-TTS":
         global E2TTS_ema_model
