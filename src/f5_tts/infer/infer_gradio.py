@@ -91,7 +91,6 @@ def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
         model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
     return load_model(DiT, model_cfg, ckpt_path, vocab_file=vocab_path)
 
-F5TTS_spanish_model = load_spanish_tts()
 F5TTS_ema_model = load_f5tts()
 E2TTS_ema_model = load_e2tts() if USING_SPACES else None
 custom_ema_model, pre_custom_path = None, ""
