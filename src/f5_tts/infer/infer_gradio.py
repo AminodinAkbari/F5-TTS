@@ -65,6 +65,12 @@ def load_e2tts(ckpt_path=str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_12
     E2TTS_model_cfg = dict(dim=1024, depth=24, heads=16, ff_mult=4)
     return load_model(UNetT, E2TTS_model_cfg, ckpt_path)
 
+def load_spanish_tts():
+    ckpt_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Spanish/model_1200000.safetensors"))
+    F5TTS_spanish_model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
+    return load_model(DiT, F5TTS_spanish_model_cfg, ckpt_path)
+
+
 
 def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
     ckpt_path, vocab_path = ckpt_path.strip(), vocab_path.strip()
@@ -79,6 +85,7 @@ def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
 
 F5TTS_ema_model = load_f5tts()
 E2TTS_ema_model = load_e2tts() if USING_SPACES else None
+F5TTS_spanish_model = load_spanish_tts()
 custom_ema_model, pre_custom_path = None, ""
 
 chat_model_state = None
@@ -266,28 +273,41 @@ with gr.Blocks() as app_tts:
 
 
 def parse_speechtypes_text(gen_text):
-    # Pattern to find {speechtype}
-    pattern = r"\{(.*?)\}"
+    # Pattern to find {Speaker_Language_Style}
+    pattern = r"\{(\w+?)_(\w+?)_(\w+?)\}"
 
-    # Split the text by the pattern
     tokens = re.split(pattern, gen_text)
 
     segments = []
-
-    current_style = "Regular"
+    current_language = "English"  # Default language
+    current_style = "Regular"    # Default style
+    current_speaker = "Speaker"  # Default speaker
 
     for i in range(len(tokens)):
-        if i % 2 == 0:
+        if i % 4 == 0:
             # This is text
             text = tokens[i].strip()
             if text:
-                segments.append({"style": current_style, "text": text})
-        else:
+                segments.append({
+                    "speaker": current_speaker,
+                    "language": current_language,
+                    "style": current_style,
+                    "text": text,
+                })
+        elif i % 4 == 1:
+            # This is speaker
+            current_speaker = tokens[i].strip()
+        elif i % 4 == 2:
+            # This is language
+            current_language = tokens[i].strip()
+        elif i % 4 == 3:
             # This is style
-            style = tokens[i].strip()
-            current_style = style
+            current_style = tokens[i].strip()
+            
+    print("Segments: ", segments)
 
     return segments
+
 
 
 with gr.Blocks() as app_multistyle:
@@ -458,6 +478,15 @@ with gr.Blocks() as app_multistyle:
         for segment in segments:
             style = segment["style"]
             text = segment["text"]
+            language = segment["language"]  # Extracted language
+
+            if language == "Spanish":
+                ema_model = F5TTS_spanish_model
+            elif language == "English":
+                ema_model = F5TTS_ema_model
+            else:
+                gr.Warning(f"Unknown language {language}, defaulting to English.")
+                ema_model = F5TTS_ema_model
 
             if style in speech_types:
                 current_style = style
@@ -470,14 +499,15 @@ with gr.Blocks() as app_multistyle:
             except KeyError:
                 gr.Warning(f"Please provide reference audio for type {current_style}.")
                 return [None] + [speech_types[style]["ref_text"] for style in speech_types]
+
             ref_text = speech_types[current_style].get("ref_text", "")
 
-            # Generate speech for this segment
+            # Generate speech for this segment using the correct model
             audio_out, _, ref_text_out = infer(
-                ref_audio, ref_text, text, tts_model_choice, remove_silence, 0, show_info=print
-            )  # show_info=print no pull to top when generating
-            sr, audio_data = audio_out
+                ref_audio, ref_text, gen_text=text, model=ema_model, remove_silence=remove_silence, cross_fade_duration=0, show_info=print
+            )
 
+            sr, audio_data = audio_out
             generated_audio_segments.append(audio_data)
             speech_types[current_style]["ref_text"] = ref_text_out
 
