@@ -483,10 +483,6 @@ with gr.Blocks() as app_multistyle:
         current_style = "Regular"
 
         for segment in segments:
-            
-            if not ref_audio:
-                gr.Warning(f"Please provide reference audio for type {full_label}.")
-                continue
 
             full_label = f"{segment['speaker']}_{segment['language']}_{segment['style']}"
             if full_label in speech_types:
