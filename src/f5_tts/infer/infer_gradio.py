@@ -558,6 +558,11 @@ with gr.Blocks() as app_multistyle:
 
         # Check if all speech types in text are available
         missing_speech_types = speech_types_in_text - speech_types_available
+        
+        print("Speech types in text:", speech_types_in_text)
+        print("Available speech types:", speech_types_available)
+        print("Missing speech types:", missing_speech_types)
+
 
         if missing_speech_types:
             # Disable the generate button
