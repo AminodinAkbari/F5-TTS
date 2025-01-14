@@ -15,8 +15,6 @@ import torchaudio
 from cached_path import cached_path
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from langdetect import detect
-
 try:
     import spaces
 
@@ -67,14 +65,6 @@ def load_e2tts(ckpt_path=str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_12
     E2TTS_model_cfg = dict(dim=1024, depth=24, heads=16, ff_mult=4)
     return load_model(UNetT, E2TTS_model_cfg, ckpt_path)
 
-def load_spanish_tts():
-    ckpt_path = str(cached_path("hf://jpgallegoar/F5-Spanish/model_1200000.safetensors"))
-    F5TTS_spanish_model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
-    return load_model(DiT, F5TTS_spanish_model_cfg, ckpt_path)
-
-F5TTS_spanish_model = load_spanish_tts()
-
-
 
 def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
     ckpt_path, vocab_path = ckpt_path.strip(), vocab_path.strip()
@@ -89,7 +79,6 @@ def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
 
 F5TTS_ema_model = load_f5tts()
 E2TTS_ema_model = load_e2tts() if USING_SPACES else None
-
 custom_ema_model, pre_custom_path = None, ""
 
 chat_model_state = None
@@ -131,8 +120,6 @@ def infer(
     speed=1,
     show_info=gr.Info,
 ):
-    show_info(f"Using model: {model}")
-
     if not ref_audio_orig:
         gr.Warning("Please provide reference audio.")
         return gr.update(), gr.update(), ref_text
@@ -143,9 +130,7 @@ def infer(
 
     ref_audio, ref_text = preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=show_info)
 
-    if isinstance(model, DiT) or isinstance(model, UNetT):
-        ema_model = model
-    elif model == "F5-TTS":
+    if model == "F5-TTS":
         ema_model = F5TTS_ema_model
     elif model == "E2-TTS":
         global E2TTS_ema_model
@@ -161,9 +146,6 @@ def infer(
             custom_ema_model = load_custom(model[1], vocab_path=model[2], model_cfg=model[3])
             pre_custom_path = model[1]
         ema_model = custom_ema_model
-    else:
-        show_info("Invalid model type provided. Defaulting to F5-TTS model.")
-        ema_model = F5TTS_ema_model
 
     final_wave, final_sample_rate, combined_spectrogram = infer_process(
         ref_audio,
@@ -489,19 +471,11 @@ with gr.Blocks() as app_multistyle:
                 gr.Warning(f"Please provide reference audio for type {current_style}.")
                 return [None] + [speech_types[style]["ref_text"] for style in speech_types]
             ref_text = speech_types[current_style].get("ref_text", "")
-            
-            # Detect language of the dialogue
-            language = detect(text)
-            if language == "es":  # Spanish
-                ema_model = F5TTS_spanish_model
-            else:  # Default to English
-                ema_model = F5TTS_ema_model
 
-            # Generate speech for this segment using the correct model
+            # Generate speech for this segment
             audio_out, _, ref_text_out = infer(
-                ref_audio, ref_text, gen_text=text, model=ema_model, remove_silence=remove_silence, cross_fade_duration=0, show_info=print
-            )
-
+                ref_audio, ref_text, text, tts_model_choice, remove_silence, 0, show_info=print
+            )  # show_info=print no pull to top when generating
             sr, audio_data = audio_out
 
             generated_audio_segments.append(audio_data)
