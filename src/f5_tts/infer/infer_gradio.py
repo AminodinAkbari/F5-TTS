@@ -66,7 +66,7 @@ def load_e2tts(ckpt_path=str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_12
     return load_model(UNetT, E2TTS_model_cfg, ckpt_path)
 
 def load_spanish_tts():
-    ckpt_path = str(cached_path("hf://SWivid/F5-TTS/F5TTS_Spanish/model_1200000.safetensors"))
+    ckpt_path = str(cached_path("https://huggingface.co/jpgallegoar/F5-Spanish/resolve/main/model_1200000.safetensors"))
     F5TTS_spanish_model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
     return load_model(DiT, F5TTS_spanish_model_cfg, ckpt_path)
 
