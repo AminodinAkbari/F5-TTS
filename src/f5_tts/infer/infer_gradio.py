@@ -552,14 +552,16 @@ with gr.Blocks() as app_multistyle:
             if name_input:
                 speech_types_available.add(name_input)
 
-        # Parse the gen_text to get the speech types used
+        # Parse the gen_text to get the full speech types (speaker_language_style)
         segments = parse_speechtypes_text(gen_text)
-        speech_types_in_text = set(segment["style"] for segment in segments)
+        speech_types_in_text = set(
+            f"{segment['speaker']}_{segment['language']}_{segment['style']}" for segment in segments
+        )
 
         # Check if all speech types in text are available
         missing_speech_types = speech_types_in_text - speech_types_available
         
-        print("Speech types in text:", speech_types_in_text)
+        print("Speech types in text (updated):", speech_types_in_text)
         print("Available speech types:", speech_types_available)
         print("Missing speech types:", missing_speech_types)
 
