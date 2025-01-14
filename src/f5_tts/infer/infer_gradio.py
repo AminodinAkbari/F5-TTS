@@ -65,11 +65,20 @@ def load_e2tts(ckpt_path=str(cached_path("hf://SWivid/E2-TTS/E2TTS_Base/model_12
     E2TTS_model_cfg = dict(dim=1024, depth=24, heads=16, ff_mult=4)
     return load_model(UNetT, E2TTS_model_cfg, ckpt_path)
 
-def load_spanish_tts():
-    ckpt_path = str(cached_path("https://huggingface.co/jpgallegoar/F5-Spanish/resolve/main/model_1200000.safetensors"))
-    F5TTS_spanish_model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
-    return load_model(DiT, F5TTS_spanish_model_cfg, ckpt_path)
+from huggingface_hub import hf_hub_download
 
+ckpt_path = hf_hub_download(repo_id="jpgallegoar/F5-Spanish", filename="model_1200000.safetensors")
+
+F5TTS_spanish_model_cfg = {
+    "dim": 1024,
+    "depth": 22,
+    "heads": 16,
+    "ff_mult": 2,
+    "text_dim": 512,
+    "conv_layers": 4
+}
+
+F5TTS_spanish_model = load_model(DiT, F5TTS_spanish_model_cfg, ckpt_path)
 
 
 def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
@@ -82,10 +91,9 @@ def load_custom(ckpt_path: str, vocab_path="", model_cfg=None):
         model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
     return load_model(DiT, model_cfg, ckpt_path, vocab_file=vocab_path)
 
-
+F5TTS_spanish_model = load_spanish_tts()
 F5TTS_ema_model = load_f5tts()
 E2TTS_ema_model = load_e2tts() if USING_SPACES else None
-F5TTS_spanish_model = load_spanish_tts()
 custom_ema_model, pre_custom_path = None, ""
 
 chat_model_state = None
