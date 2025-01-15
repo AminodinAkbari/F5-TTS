@@ -453,88 +453,48 @@ with gr.Blocks() as app_multistyle:
     # Output audio
     audio_output_multistyle = gr.Audio(label="Synthesized Audio")
 
-    @gpu_decorator
-    def generate_multistyle_speech(
-        gen_text,
-        *args,
-    ):
+    def generate_multistyle_speech(gen_text, *args):
         speech_type_names_list = args[:max_speech_types]
         speech_type_audios_list = args[max_speech_types : 2 * max_speech_types]
         speech_type_ref_texts_list = args[2 * max_speech_types : 3 * max_speech_types]
         remove_silence = args[3 * max_speech_types]
+
         # Collect the speech types and their audios into a dict
         speech_types = OrderedDict()
-
-        ref_text_idx = 0
         for name_input, audio_input, ref_text_input in zip(
             speech_type_names_list, speech_type_audios_list, speech_type_ref_texts_list
         ):
             if name_input and audio_input:
                 speech_types[name_input] = {"audio": audio_input, "ref_text": ref_text_input}
-            else:
-                speech_types[f"@{ref_text_idx}@"] = {"audio": "", "ref_text": ""}
-            ref_text_idx += 1
 
         # Parse the gen_text into segments
         segments = parse_speechtypes_text(gen_text)
 
-        # For each segment, generate speech
+        # Generate speech for each segment
         generated_audio_segments = []
-        current_style = "Regular"
-
         for segment in segments:
-
             full_label = f"{segment['speaker']}_{segment['language']}_{segment['style']}"
             if full_label in speech_types:
                 ref_audio = speech_types[full_label]["audio"]
                 ref_text = speech_types[full_label].get("ref_text", "")
+                ema_model = F5TTS_spanish_model if segment['language'] == "Spanish" else F5TTS_ema_model
+
+                audio_out, _, ref_text_out = infer(
+                    ref_audio, ref_text, gen_text=segment["text"], model=ema_model, 
+                    remove_silence=remove_silence, cross_fade_duration=0, show_info=print
+                )
+                sr, audio_data = audio_out
+                generated_audio_segments.append(audio_data)
             else:
-                gr.Warning(f"Type {full_label} is not available, will use Regular as default.")
-                ref_audio = speech_types["Regular"]["audio"]
-                ref_text = speech_types["Regular"].get("ref_text", "")
-            
-            style = segment["style"]
-            text = segment["text"]
-            language = segment["language"]  # Extracted language
-
-            if language == "Spanish":
-                ema_model = F5TTS_spanish_model
-            elif language == "English":
-                ema_model = F5TTS_ema_model
-            else:
-                gr.Warning(f"Unknown language {language}, defaulting to English.")
-                ema_model = F5TTS_ema_model
-
-            if style in speech_types:
-                current_style = style
-            else:
-                gr.Warning(f"Type {style} is not available, will use Regular as default.")
-                current_style = "Regular"
-
-            try:
-                ref_audio = speech_types[current_style]["audio"]
-            except KeyError:
-                gr.Warning(f"Please provide reference audio for type {current_style}.")
-                return [None] + [speech_types[style]["ref_text"] for style in speech_types]
-
-            ref_text = speech_types[current_style].get("ref_text", "")
-
-            # Generate speech for this segment using the correct model
-            audio_out, _, ref_text_out = infer(
-                ref_audio, ref_text, gen_text=text, model=ema_model, remove_silence=remove_silence, cross_fade_duration=0, show_info=print
-            )
-
-            sr, audio_data = audio_out
-            generated_audio_segments.append(audio_data)
-            speech_types[current_style]["ref_text"] = ref_text_out
+                gr.Warning(f"Type {full_label} is not available.")
 
         # Concatenate all audio segments
         if generated_audio_segments:
             final_audio_data = np.concatenate(generated_audio_segments)
-            return [(sr, final_audio_data)] + [speech_types[style]["ref_text"] for style in speech_types]
+            return [(sr, final_audio_data)]
         else:
             gr.Warning("No audio generated.")
-            return [None] + [speech_types[style]["ref_text"] for style in speech_types]
+            return None
 
     generate_multistyle_btn.click(
         generate_multistyle_speech,
@@ -570,18 +530,17 @@ with gr.Blocks() as app_multistyle:
 
         # Check if all speech types in text are available
         missing_speech_types = speech_types_in_text - speech_types_available
-        
-        print("Speech types in text (updated):", speech_types_in_text)
+
+        print("Speech types in text:", speech_types_in_text)
         print("Available speech types:", speech_types_available)
         print("Missing speech types:", missing_speech_types)
 
-
+        # Enable or disable generate button based on missing types
         if missing_speech_types:
-            # Disable the generate button
             return gr.update(interactive=False)
         else:
-            # Enable the generate button
             return gr.update(interactive=True)
+
 
     gen_text_input_multistyle.change(
         validate_speech_types,
