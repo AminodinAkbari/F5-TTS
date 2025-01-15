@@ -144,7 +144,10 @@ def infer(
 
     ref_audio, ref_text = preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=show_info)
 
-    if model == "F5-TTS":
+    # Ensure ema_model is assigned correctly
+    if isinstance(model, DiT) or isinstance(model, UNetT):
+        ema_model = model
+    elif model == "F5-TTS":
         ema_model = F5TTS_ema_model
     elif model == "E2-TTS":
         global E2TTS_ema_model
@@ -152,6 +155,8 @@ def infer(
             show_info("Loading E2-TTS model...")
             E2TTS_ema_model = load_e2tts()
         ema_model = E2TTS_ema_model
+    elif model == F5TTS_spanish_model:  # Handle Spanish model case
+        ema_model = F5TTS_spanish_model
     elif isinstance(model, list) and model[0] == "Custom":
         assert not USING_SPACES, "Only official checkpoints allowed in Spaces."
         global custom_ema_model, pre_custom_path
@@ -160,6 +165,9 @@ def infer(
             custom_ema_model = load_custom(model[1], vocab_path=model[2], model_cfg=model[3])
             pre_custom_path = model[1]
         ema_model = custom_ema_model
+    else:
+        gr.Warning("Unknown model type. Using default F5-TTS model.")
+        ema_model = F5TTS_ema_model  # Fallback to default model
 
     final_wave, final_sample_rate, combined_spectrogram = infer_process(
         ref_audio,
@@ -188,6 +196,7 @@ def infer(
         save_spectrogram(combined_spectrogram, spectrogram_path)
 
     return (final_sample_rate, final_wave), spectrogram_path, ref_text
+
 
 
 with gr.Blocks() as app_credits:
